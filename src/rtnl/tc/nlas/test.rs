@@ -15,6 +15,7 @@ use netlink_packet_utils::{
     parsers::parse_u32,
     traits::{Emitable, Parseable},
 };
+use tc::nlas::{StatsBasicBuffer, StatsBasic, StatsQueue, StatsQueueBuffer};
 
 #[rustfmt::skip]
     static FILTER_U32_ACTION_PACKET: [u8; 260] = [
@@ -227,7 +228,7 @@ fn tc_filter_u32_parse() {
 
     let act = act_iter.next().unwrap();
     assert_eq!(act.kind(), 1); // TCA_ACT_TAB
-    assert_eq!(act.buffer_len(), 136); // TCA_ACT_TAB
+    assert_eq!(act.buffer_len(), 132); // TCA_ACT_TAB
     assert_eq!(act.tab, 1);
 
     let mut act_nlas_iter = act.nlas.iter();
@@ -310,8 +311,8 @@ fn tc_filter_u32_emit() {
                 nlas: vec![
                     ActNla::Kind(mirred::KIND.to_string()),
                     ActNla::Stats(vec![
-                        Stats2::StatsBasic(vec![0u8; 16]),
-                        Stats2::StatsQueue(vec![0u8; 20]),
+                        Stats2::StatsBasic(StatsBasic::parse(&StatsBasicBuffer::new(vec![0u8; 16])).unwrap()),
+                        Stats2::StatsQueue(StatsQueue::parse(&StatsQueueBuffer::new(vec![0u8; 20])).unwrap()),
                     ]),
                     ActNla::Options(vec![
                         ActOpt::Mirred(mirred::Nla::Parms(mirred::TcMirred {
@@ -335,7 +336,7 @@ fn tc_filter_u32_emit() {
 
     let msg = TcMessage::from_parts(header, nlas);
     let mut buf = vec![0; 260];
-    assert_eq!(msg.buffer_len(), 260);
+    assert_eq!(msg.buffer_len(), 256);
     msg.emit(&mut buf[..]);
     assert_eq!(&buf, &FILTER_U32_ACTION_PACKET);
 }
